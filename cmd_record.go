@@ -18,8 +18,8 @@ var RecordOutPath string
 func init() {
 	recordCmd.Flags().Int32VarP(&RecordPid, "pid", "p", 0, "target process id")
 	_ = recordCmd.MarkFlagRequired("pid")
-	recordCmd.Flags().Int32VarP(&RecordTime,"time", "t", -1, "record seconds")
-	recordCmd.Flags().StringVarP(&RecordOutPath,"out", "o", "", "out put file path")
+	recordCmd.Flags().Int32VarP(&RecordTime, "time", "t", -1, "record seconds")
+	recordCmd.Flags().StringVarP(&RecordOutPath, "output", "o", "", "output file path")
 	rootCmd.AddCommand(recordCmd)
 }
 

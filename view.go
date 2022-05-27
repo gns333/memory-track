@@ -11,8 +11,8 @@ const (
 	Main   = "MainView"
 	Detail = "DetailView"
 
-	MenuWidth = 24
-	MainWidth = 48
+	MenuWidth = 32
+	MainWidth = 60
 )
 
 var menuSelectIndex int = 0
@@ -26,10 +26,10 @@ const (
 )
 
 var MenuDescription = []string{
-	"Malloc Top Byte",
-	"Malloc Top Count",
-	"Malloc Top Byte After Free",
-	"Malloc Top Count After Free",
+	"Top Byte (Malloc)",
+	"Top Count (Malloc)",
+	"Top Byte (MallocAfterFree)",
+	"Top Count (MallocAfterFree)",
 }
 var mallocTopByteSlice []MallocStat
 var mallocTopCountSlice []MallocStat
@@ -75,22 +75,22 @@ func prepareData() {
 		mallocTopCountSlice = append(mallocTopCountSlice, *v)
 	}
 	sort.SliceStable(mallocTopByteSlice, func(i, j int) bool {
-		return mallocTopByteSlice[i].byte > mallocTopByteSlice[j].byte
+		return mallocTopByteSlice[i].Byte > mallocTopByteSlice[j].Byte
 	})
 	sort.SliceStable(mallocTopCountSlice, func(i, j int) bool {
-		return mallocTopCountSlice[i].count > mallocTopCountSlice[j].count
+		return mallocTopCountSlice[i].Count > mallocTopCountSlice[j].Count
 	})
 
 	remainMallocStatMap := make(map[uint32]*MallocStat)
 	for _, v := range remainMallocOpMap {
-		if _, ok := remainMallocStatMap[v.stackHash]; ok {
-			remainMallocStatMap[v.stackHash].count += 1
-			remainMallocStatMap[v.stackHash].byte += v.byte
+		if _, ok := remainMallocStatMap[v.StackHash]; ok {
+			remainMallocStatMap[v.StackHash].Count += 1
+			remainMallocStatMap[v.StackHash].Byte += v.Byte
 		} else {
-			remainMallocStatMap[v.stackHash] = &MallocStat{
-				byte:  v.byte,
-				count: 1,
-				stack: v.stack,
+			remainMallocStatMap[v.StackHash] = &MallocStat{
+				Byte:  v.Byte,
+				Count: 1,
+				Stack: v.Stack,
 			}
 		}
 	}
@@ -99,10 +99,10 @@ func prepareData() {
 		mallocTopCountAfterFreeSlice = append(mallocTopCountAfterFreeSlice, *v)
 	}
 	sort.SliceStable(mallocTopByteAfterFreeSlice, func(i, j int) bool {
-		return mallocTopByteAfterFreeSlice[i].byte > mallocTopByteAfterFreeSlice[j].byte
+		return mallocTopByteAfterFreeSlice[i].Byte > mallocTopByteAfterFreeSlice[j].Byte
 	})
 	sort.SliceStable(mallocTopCountAfterFreeSlice, func(i, j int) bool {
-		return mallocTopCountAfterFreeSlice[i].count > mallocTopCountAfterFreeSlice[j].count
+		return mallocTopCountAfterFreeSlice[i].Count > mallocTopCountAfterFreeSlice[j].Count
 	})
 }
 
@@ -200,19 +200,19 @@ func drawMainView(g *gocui.Gui) {
 	mainV.Clear()
 	if menuSelectIndex == MallocTopByte {
 		for _, elem := range mallocTopByteSlice {
-			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.stack[0], elem.byte)
+			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.Stack[0], elem.Byte)
 		}
 	} else if menuSelectIndex == MallocTopCount {
 		for _, elem := range mallocTopCountSlice {
-			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.stack[0], elem.count)
+			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.Stack[0], elem.Count)
 		}
 	} else if menuSelectIndex == MallocTopByteAfterFree {
 		for _, elem := range mallocTopByteAfterFreeSlice {
-			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.stack[0], elem.byte)
+			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.Stack[0], elem.Byte)
 		}
 	} else if menuSelectIndex == MallocTopCountAfterFree {
 		for _, elem := range mallocTopCountAfterFreeSlice {
-			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.stack[0], elem.count)
+			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.Stack[0], elem.Count)
 		}
 	}
 	mainV.SetCursor(0, mainSelectIndex)
@@ -236,7 +236,7 @@ func drawDetailView(g *gocui.Gui) {
 	detailV.Clear()
 	mainSlice := getMainViewSlice()
 	if mainSlice != nil {
-		for _, elem := range mainSlice[mainSelectIndex].stack {
+		for _, elem := range mainSlice[mainSelectIndex].Stack {
 			_, _ = fmt.Fprintf(detailV, "%s\n", elem)
 		}
 	}

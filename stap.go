@@ -103,21 +103,21 @@ func parseMallocOpStr(opStr []string) (*MallocOp, error) {
 	if err != nil {
 		return nil, err
 	}
-	op.byte = int64(b)
+	op.Byte = int64(b)
 	a, err := strconv.ParseUint(strings.TrimPrefix(opStr[1], "return=0x"), 16, 64)
 	if err != nil {
 		return nil, err
 	}
-	op.addr = uintptr(a)
-	op.stack = make([]string, len(opStr)-4)
-	copy(op.stack, opStr[3:len(opStr)-1])
-	op.stackHash = hashCodeString(op.stack)
+	op.Addr = uintptr(a)
+	op.Stack = make([]string, len(opStr)-4)
+	copy(op.Stack, opStr[3:len(opStr)-1])
+	op.StackHash = hashCodeString(op.Stack)
 
 	PrintDebugInfo("###### malloc operation parsed ######")
-	PrintDebugInfo("op.byte=%d", op.byte)
-	PrintDebugInfo("op.addr=%d", op.addr)
-	PrintDebugInfo("op.stackhash=%d", op.stackHash)
-	for _, s := range op.stack {
+	PrintDebugInfo("op.Byte=%d", op.Byte)
+	PrintDebugInfo("op.Addr=%d", op.Addr)
+	PrintDebugInfo("op.stackhash=%d", op.StackHash)
+	for _, s := range op.Stack {
 		PrintDebugInfo(s)
 	}
 	PrintDebugInfo("###### malloc operation end ######\n")
@@ -135,15 +135,15 @@ func parseFreeOpStr(opStr []string) (*FreeOp, error) {
 	if err != nil {
 		return nil, err
 	}
-	op.addr = uintptr(a)
-	op.stack = make([]string, len(opStr)-3)
-	copy(op.stack, opStr[2:len(opStr)-1])
-	op.stackHash = hashCodeString(op.stack)
+	op.Addr = uintptr(a)
+	op.Stack = make([]string, len(opStr)-3)
+	copy(op.Stack, opStr[2:len(opStr)-1])
+	op.StackHash = hashCodeString(op.Stack)
 
 	PrintDebugInfo("###### free operation parsed ######")
-	PrintDebugInfo("op.addr=%d", op.addr)
-	PrintDebugInfo("op.stackhash=%d", op.stackHash)
-	for _, s := range op.stack {
+	PrintDebugInfo("op.Addr=%d", op.Addr)
+	PrintDebugInfo("op.stackhash=%d", op.StackHash)
+	for _, s := range op.Stack {
 		PrintDebugInfo(s)
 	}
 	PrintDebugInfo("###### free operation end ######\n")

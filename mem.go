@@ -15,27 +15,27 @@ var freeStatMap = make(map[uint32]*FreeStat)
 var remainMallocOpMap = make(map[uintptr]*MallocOp)
 
 type MallocStat struct {
-	count int32
-	byte  int64
-	stack []string
+	Count int32
+	Byte  int64
+	Stack []string
 }
 
 type FreeStat struct {
-	count int32
-	stack []string
+	Count int32
+	Stack []string
 }
 
 type MallocOp struct {
-	byte      int64
-	addr      uintptr
-	stack     []string
-	stackHash uint32
+	Byte      int64
+	Addr      uintptr
+	Stack     []string
+	StackHash uint32
 }
 
 type FreeOp struct {
-	addr      uintptr
-	stack     []string
-	stackHash uint32
+	Addr      uintptr
+	Stack     []string
+	StackHash uint32
 }
 
 func RecordProcessMem(pid int32) error {
@@ -76,7 +76,10 @@ Loop:
 		time.Sleep(time.Millisecond)
 	}
 
-	ShowReportUI()
+	err = Save()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -86,29 +89,29 @@ func StopRecordMem() {
 }
 
 func addMallocOp(m *MallocOp) {
-	if _, ok := mallocStatMap[m.stackHash]; ok {
-		mallocStatMap[m.stackHash].count += 1
-		mallocStatMap[m.stackHash].byte += m.byte
+	if _, ok := mallocStatMap[m.StackHash]; ok {
+		mallocStatMap[m.StackHash].Count += 1
+		mallocStatMap[m.StackHash].Byte += m.Byte
 	} else {
-		mallocStatMap[m.stackHash] = &MallocStat{
-			byte:  m.byte,
-			count: 1,
-			stack: m.stack,
+		mallocStatMap[m.StackHash] = &MallocStat{
+			Byte:  m.Byte,
+			Count: 1,
+			Stack: m.Stack,
 		}
 	}
-	remainMallocOpMap[m.addr] = m
+	remainMallocOpMap[m.Addr] = m
 }
 
 func addFreeOp(f *FreeOp) {
-	if _, ok := freeStatMap[f.stackHash]; ok {
-		freeStatMap[f.stackHash].count += 1
+	if _, ok := freeStatMap[f.StackHash]; ok {
+		freeStatMap[f.StackHash].Count += 1
 	} else {
-		freeStatMap[f.stackHash] = &FreeStat{
-			count: 1,
-			stack: f.stack,
+		freeStatMap[f.StackHash] = &FreeStat{
+			Count: 1,
+			Stack: f.Stack,
 		}
 	}
-	delete(remainMallocOpMap, f.addr)
+	delete(remainMallocOpMap, f.Addr)
 }
 
 func probeMemoryOperation(pid int32, mc chan *MallocOp, fc chan *FreeOp, ec chan error) {
