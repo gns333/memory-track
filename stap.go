@@ -25,10 +25,10 @@ func checkSystemTapDependency() error {
 }
 
 const (
-	OpStart = "---==="
-	OpEnd = "===---"
+	OpStart    = "---==="
+	OpEnd      = "===---"
 	StackStart = "***==="
-	StackEnd = "===***"
+	StackEnd   = "===***"
 )
 
 func isOperationStartLine(line string) bool {
@@ -48,17 +48,17 @@ func buildMallocProbeCmdStr(pid int32, execPath string, libCPath string, libStdC
 		" -e " +
 		"'probe process(\"" + libCPath + "\").function(\"malloc\").return" +
 		"{ if(pid() == target()) " +
-			"{ " +
-				"printf(\"" +
-					OpStart + "\\n" +
-					"bytes=%d\\n" +
-					"%s\\n" +
-					StackStart + "\\n" +
-					"%s\\n" +
-					StackEnd + "\\n" +
-					OpEnd + "\\n\\n\"," +
-				"@entry($bytes), $$return, sprint_ubacktrace());" +
-			"} " +
+		"{ " +
+		"printf(\"" +
+		OpStart + "\\n" +
+		"bytes=%d\\n" +
+		"%s\\n" +
+		StackStart + "\\n" +
+		"%s\\n" +
+		StackEnd + "\\n" +
+		OpEnd + "\\n\\n\"," +
+		"@entry($bytes), $$return, sprint_ubacktrace());" +
+		"} " +
 		"}'"
 	if Debug {
 		color.Debug.Println(mallocCmdStr)
@@ -75,16 +75,16 @@ func buildFreeProbeCmdStr(pid int32, execPath string, libCPath string, libStdCpp
 		" -e " +
 		"'probe process(\"" + libCPath + "\").function(\"free\")" +
 		"{ if(pid() == target()) " +
-			"{ " +
-				"printf(\"" +
-					OpStart + "\\n" +
-					"mem=%d\\n" +
-					StackStart + "\\n" +
-					"%s\\n" +
-					StackEnd + "\\n" +
-					OpEnd + "\\n\\n\"," +
-				"$mem, sprint_ubacktrace());" +
-			"} " +
+		"{ " +
+		"printf(\"" +
+		OpStart + "\\n" +
+		"mem=%d\\n" +
+		StackStart + "\\n" +
+		"%s\\n" +
+		StackEnd + "\\n" +
+		OpEnd + "\\n\\n\"," +
+		"$mem, sprint_ubacktrace());" +
+		"} " +
 		"}'"
 	if Debug {
 		color.Debug.Println(freeCmdStr)
@@ -94,7 +94,7 @@ func buildFreeProbeCmdStr(pid int32, execPath string, libCPath string, libStdCpp
 
 func parseMallocOpStr(opStr []string) (*MallocOp, error) {
 	PrintDebugInfo("###### malloc operation start ######")
-	for _, s:= range opStr {
+	for _, s := range opStr {
 		PrintDebugInfo(s)
 	}
 
@@ -103,20 +103,21 @@ func parseMallocOpStr(opStr []string) (*MallocOp, error) {
 	if err != nil {
 		return nil, err
 	}
-	op.bytes = int32(b)
+	op.byte = int64(b)
 	a, err := strconv.ParseUint(strings.TrimPrefix(opStr[1], "return=0x"), 16, 64)
 	if err != nil {
 		return nil, err
 	}
 	op.addr = uintptr(a)
-	op.stack = opStr[3:len(opStr)-1]
+	op.stack = make([]string, len(opStr)-4)
+	copy(op.stack, opStr[3:len(opStr)-1])
 	op.stackHash = hashCodeString(op.stack)
 
 	PrintDebugInfo("###### malloc operation parsed ######")
-	PrintDebugInfo("op.byte=%d", op.bytes)
+	PrintDebugInfo("op.byte=%d", op.byte)
 	PrintDebugInfo("op.addr=%d", op.addr)
 	PrintDebugInfo("op.stackhash=%d", op.stackHash)
-	for _, s:= range op.stack {
+	for _, s := range op.stack {
 		PrintDebugInfo(s)
 	}
 	PrintDebugInfo("###### malloc operation end ######\n")
@@ -125,7 +126,7 @@ func parseMallocOpStr(opStr []string) (*MallocOp, error) {
 
 func parseFreeOpStr(opStr []string) (*FreeOp, error) {
 	PrintDebugInfo("###### free operation start ######")
-	for _, s:= range opStr {
+	for _, s := range opStr {
 		PrintDebugInfo(s)
 	}
 
@@ -135,13 +136,14 @@ func parseFreeOpStr(opStr []string) (*FreeOp, error) {
 		return nil, err
 	}
 	op.addr = uintptr(a)
-	op.stack = opStr[2:len(opStr)-1]
+	op.stack = make([]string, len(opStr)-3)
+	copy(op.stack, opStr[2:len(opStr)-1])
 	op.stackHash = hashCodeString(op.stack)
 
 	PrintDebugInfo("###### free operation parsed ######")
 	PrintDebugInfo("op.addr=%d", op.addr)
 	PrintDebugInfo("op.stackhash=%d", op.stackHash)
-	for _, s:= range op.stack {
+	for _, s := range op.stack {
 		PrintDebugInfo(s)
 	}
 	PrintDebugInfo("###### free operation end ######\n")

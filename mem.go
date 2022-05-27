@@ -9,18 +9,32 @@ import (
 	"time"
 )
 
-var stopRecord bool
+var stopRecord = make(chan bool, 1)
+var mallocStatMap = make(map[uint32]*MallocStat)
+var freeStatMap = make(map[uint32]*FreeStat)
+var remainMallocOpMap = make(map[uintptr]*MallocOp)
+
+type MallocStat struct {
+	count int32
+	byte  int64
+	stack []string
+}
+
+type FreeStat struct {
+	count int32
+	stack []string
+}
 
 type MallocOp struct {
-	bytes int32
-	addr uintptr
-	stack []string
+	byte      int64
+	addr      uintptr
+	stack     []string
 	stackHash uint32
 }
 
 type FreeOp struct {
-	addr uintptr
-	stack []string
+	addr      uintptr
+	stack     []string
 	stackHash uint32
 }
 
@@ -46,20 +60,55 @@ func RecordProcessMem(pid int32) error {
 	ec := make(chan error, 100)
 	probeMemoryOperation(pid, mc, fc, ec)
 
+Loop:
 	for {
 		select {
-		case err := <- ec:
-			fmt.Println(err)
-		case free := <- fc:
-			fmt.Println(free)
-		case malloc := <- mc:
-			fmt.Println(malloc)
+		case err := <-ec:
+			PrintVerboseInfo("probe: %v", err)
+		case free := <-fc:
+			addFreeOp(free)
+		case malloc := <-mc:
+			addMallocOp(malloc)
+		case <-stopRecord:
+			break Loop
 		default:
 		}
 		time.Sleep(time.Millisecond)
 	}
 
+	ShowReportUI()
+
 	return nil
+}
+
+func StopRecordMem() {
+	stopRecord <- true
+}
+
+func addMallocOp(m *MallocOp) {
+	if _, ok := mallocStatMap[m.stackHash]; ok {
+		mallocStatMap[m.stackHash].count += 1
+		mallocStatMap[m.stackHash].byte += m.byte
+	} else {
+		mallocStatMap[m.stackHash] = &MallocStat{
+			byte:  m.byte,
+			count: 1,
+			stack: m.stack,
+		}
+	}
+	remainMallocOpMap[m.addr] = m
+}
+
+func addFreeOp(f *FreeOp) {
+	if _, ok := freeStatMap[f.stackHash]; ok {
+		freeStatMap[f.stackHash].count += 1
+	} else {
+		freeStatMap[f.stackHash] = &FreeStat{
+			count: 1,
+			stack: f.stack,
+		}
+	}
+	delete(remainMallocOpMap, f.addr)
 }
 
 func probeMemoryOperation(pid int32, mc chan *MallocOp, fc chan *FreeOp, ec chan error) {
@@ -105,7 +154,7 @@ func probeMemoryOperation(pid int32, mc chan *MallocOp, fc chan *FreeOp, ec chan
 	go collectFreeOp(freeOutReader, fc, ec)
 }
 
-func checkErrReader(buf * bufio.Reader, ec chan error) {
+func checkErrReader(buf *bufio.Reader, ec chan error) {
 	for {
 		output, _, err := buf.ReadLine()
 		if err == nil {
@@ -121,7 +170,7 @@ func checkErrReader(buf * bufio.Reader, ec chan error) {
 	}
 }
 
-func getStdPipeReader(command * exec.Cmd) (* bufio.Reader, * bufio.Reader, error) {
+func getStdPipeReader(command *exec.Cmd) (*bufio.Reader, *bufio.Reader, error) {
 	stdOutPipe, err := command.StdoutPipe()
 	if err != nil {
 		return nil, nil, err
