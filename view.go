@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jroimartin/gocui"
 	"sort"
+	"strconv"
 )
 
 const (
@@ -11,8 +12,9 @@ const (
 	Main   = "MainView"
 	Detail = "DetailView"
 
-	MenuWidth = 32
-	MainWidth = 60
+	MenuWidth         = 32
+	MainWidth         = 60
+	MainFunctionWidth = MainWidth - 15
 )
 
 var menuSelectIndex int = 0
@@ -47,7 +49,7 @@ func ShowReportUI() error {
 
 	g.Cursor = false
 	g.Highlight = true
-	g.SelFgColor = gocui.ColorBlue
+	g.SelFgColor = gocui.ColorMagenta
 	g.BgColor = gocui.ColorBlack
 	g.FgColor = gocui.ColorWhite
 	g.SetManagerFunc(layout)
@@ -62,6 +64,11 @@ func ShowReportUI() error {
 		return fmt.Errorf("cui key binding error: %w", err)
 	}
 	_, _ = g.SetCurrentView(Menu)
+
+	drawMenuView(g)
+	drawMainView(g)
+	drawDetailView(g)
+
 	err = g.MainLoop()
 	if err != nil && err != gocui.ErrQuit {
 		return fmt.Errorf("cui main loop error: %w", err)
@@ -112,6 +119,7 @@ func initViews(g *gocui.Gui) error {
 	if err != nil && err != gocui.ErrUnknownView {
 		return err
 	}
+	menuView.Title = "Menu"
 	menuView.Highlight = true
 	menuView.FgColor = gocui.ColorCyan
 	menuView.SelBgColor = gocui.ColorBlue
@@ -121,6 +129,7 @@ func initViews(g *gocui.Gui) error {
 	if err != nil && err != gocui.ErrUnknownView {
 		return err
 	}
+	mainView.Title = "Main Window"
 	mainView.Highlight = true
 	mainView.Autoscroll = true
 	mainView.Wrap = true
@@ -132,7 +141,7 @@ func initViews(g *gocui.Gui) error {
 	if err != nil && err != gocui.ErrUnknownView {
 		return err
 	}
-	detailView.Highlight = true
+	detailView.Title = "Detail Window"
 	detailView.Autoscroll = true
 	detailView.Wrap = true
 	detailView.FgColor = gocui.ColorCyan
@@ -143,6 +152,10 @@ func initViews(g *gocui.Gui) error {
 
 func keyBinding(g *gocui.Gui) error {
 	err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quitReportUI)
+	if err != nil {
+		return err
+	}
+	err = g.SetKeybinding("", gocui.KeyEsc, gocui.ModNone, quitReportUI)
 	if err != nil {
 		return err
 	}
@@ -200,22 +213,26 @@ func drawMainView(g *gocui.Gui) {
 	mainV.Clear()
 	if menuSelectIndex == MallocTopByte {
 		for _, elem := range mallocTopByteSlice {
-			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.Stack[0], elem.Byte)
+			str := expandStyleString(elem.Stack[0], MainFunctionWidth, strconv.FormatInt(elem.Byte, 10))
+			_, _ = fmt.Fprintf(mainV, "%s\n", str)
 		}
 	} else if menuSelectIndex == MallocTopCount {
 		for _, elem := range mallocTopCountSlice {
-			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.Stack[0], elem.Count)
+			str := expandStyleString(elem.Stack[0], MainFunctionWidth, strconv.FormatInt(int64(elem.Count), 10))
+			_, _ = fmt.Fprintf(mainV, "%s\n", str)
 		}
 	} else if menuSelectIndex == MallocTopByteAfterFree {
 		for _, elem := range mallocTopByteAfterFreeSlice {
-			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.Stack[0], elem.Byte)
+			str := expandStyleString(elem.Stack[0], MainFunctionWidth, strconv.FormatInt(elem.Byte, 10))
+			_, _ = fmt.Fprintf(mainV, "%s\n", str)
 		}
 	} else if menuSelectIndex == MallocTopCountAfterFree {
 		for _, elem := range mallocTopCountAfterFreeSlice {
-			_, _ = fmt.Fprintf(mainV, "%s\t%d\n", elem.Stack[0], elem.Count)
+			str := expandStyleString(elem.Stack[0], MainFunctionWidth, strconv.FormatInt(int64(elem.Count), 10))
+			_, _ = fmt.Fprintf(mainV, "%s\n", str)
 		}
 	}
-	mainV.SetCursor(0, mainSelectIndex)
+	_ = mainV.SetCursor(0, mainSelectIndex)
 }
 
 func getMainViewSlice() []MallocStat {
@@ -292,4 +309,20 @@ func keyArrowRight(g *gocui.Gui, v *gocui.View) error {
 		_, _ = g.SetCurrentView(Main)
 	}
 	return nil
+}
+
+func expandStyleString(s1 string, s1width int, s2 string) string {
+	var ret string
+	if len(s1) >= s1width {
+		ret += s1[:s1width-7]
+		ret += "..."
+		ret += s1[len(s1)-3:]
+	} else {
+		ret += s1
+	}
+	for i := len(ret); i < s1width; i++ {
+		ret += " "
+	}
+	ret += s2
+	return ret
 }
