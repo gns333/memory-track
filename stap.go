@@ -51,15 +51,9 @@ func buildMallocProbeCmdStr(pid int32, execPath string, libCPath string, libStdC
 		"'probe process(\"" + libCPath + "\").function(\"malloc\").return" +
 		"{ if(pid() == target()) " +
 		"{ " +
-		"printf(\"" +
-		OpStart + "\\n" +
-		"bytes=%d\\n" +
-		"%s\\n" +
-		StackStart + "\\n" +
-		"%s\\n" +
-		StackEnd + "\\n" +
-		OpEnd + "\\n\\n\"," +
-		"@entry($bytes), $$return, sprint_ubacktrace());" +
+		"printf(\"" + OpStart + "\\n" + "bytes=%d\\n" + "%s\\n" + StackStart + "\\n\"," + "@entry($bytes), $$return); " +
+		"print_ubacktrace(); " +
+		"printf(\"" + StackEnd + "\\n" + OpEnd + "\\n\\n\"); " +
 		"} " +
 		"}'"
 	if Debug {
@@ -80,14 +74,9 @@ func buildFreeProbeCmdStr(pid int32, execPath string, libCPath string, libStdCpp
 		"'probe process(\"" + libCPath + "\").function(\"free\")" +
 		"{ if(pid() == target()) " +
 		"{ " +
-		"printf(\"" +
-		OpStart + "\\n" +
-		"mem=%d\\n" +
-		StackStart + "\\n" +
-		"%s\\n" +
-		StackEnd + "\\n" +
-		OpEnd + "\\n\\n\"," +
-		"$mem, sprint_ubacktrace());" +
+		"printf(\"" + OpStart + "\\n" + "mem=%d\\n" + StackStart + "\\n\"," + "$mem); " +
+		"print_ubacktrace(); " +
+		"printf(\"" + StackEnd + "\\n" + OpEnd + "\\n\\n\"); " +
 		"} " +
 		"}'"
 	if Debug {

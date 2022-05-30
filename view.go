@@ -39,6 +39,8 @@ var mallocTopCountSlice []MallocStat
 var mallocTopByteAfterFreeSlice []MallocStat
 var mallocTopCountAfterFreeSlice []MallocStat
 
+var cppfiltCacheMap = make(map[string]string)
+
 func ShowReportUI() error {
 	prepareData()
 
@@ -334,20 +336,48 @@ func expandStyleString(s1 string, s1width int, s2 string) string {
 }
 
 func translateStackString(rawStack string) (string, error) {
-	index1 := strings.Index(rawStack, "+")
-	index2 := strings.Index(rawStack, " ")
+	index1 := strings.Index(rawStack, " : ")
+	index2 := strings.Index(rawStack, "[")
 	if index1 <= 0 || index2 <= 0 || index1 >= index2 {
 		return rawStack, fmt.Errorf("translate stack split args error: %s", rawStack)
 	}
-	funcName := rawStack[:index1]
-	fileLine := rawStack[index1+1 : index2]
-	moduleName := rawStack[index2+1:]
+	fileLine := strings.TrimSpace(rawStack[:index1])
+	funcName := strings.TrimSpace(rawStack[index1+3 : index2])
+	moduleName := strings.TrimSpace(rawStack[index2:])
+
+	simplifyModuleName, _ := SimplifyModuleName(moduleName)
+	filtFuncName, _ := CPPFiltFuncName(funcName)
+
+	return fmt.Sprintf("%s [%s] [%s]", filtFuncName, fileLine, simplifyModuleName), nil
+}
+
+func SimplifyModuleName(rawName string) (string, error) {
+	index1 := strings.LastIndex(rawName, "/")
+	index2 := strings.LastIndex(rawName, "]")
+	if index1 <= 0 || index2 <= 0 || index1 >= index2 {
+		return rawName, fmt.Errorf("simplify module split args error: %s", rawName)
+	}
+	return rawName[index1+1 : index2], nil
+}
+
+func CPPFiltFuncName(rawName string) (string, error) {
+	index := strings.Index(rawName, "+")
+	if index <= 0 {
+		return rawName, fmt.Errorf("cppfilt split args error: %s", rawName)
+	}
+	funcName := rawName[:index]
+
+	if elem, ok := cppfiltCacheMap[funcName]; ok {
+		return elem, nil
+	}
 
 	cmd := fmt.Sprintf("c++filt %s", funcName)
 	filtName, err := RunShellCommand(cmd)
 	if err != nil {
-		return rawStack, fmt.Errorf("translate stack run shell err: %v", err)
+		return rawName, fmt.Errorf("cppfilt name run shell err: %v", err)
 	}
 	filtName = strings.TrimSuffix(filtName, "\n")
-	return fmt.Sprintf("%s+%s %s", filtName, fileLine, moduleName), nil
+	cppfiltCacheMap[funcName] = filtName
+
+	return filtName, nil
 }
