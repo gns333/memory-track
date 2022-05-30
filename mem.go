@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/gookit/color"
 	"os/exec"
 	"strings"
 	"time"
@@ -60,6 +61,8 @@ func RecordProcessMem(pid int32) error {
 	ec := make(chan error, 100)
 	probeMemoryOperation(pid, mc, fc, ec)
 
+	color.Info.Prompt("start track memory...")
+	color.Info.Prompt("press [ctrl + C] stop")
 Loop:
 	for {
 		select {
@@ -76,10 +79,11 @@ Loop:
 		time.Sleep(time.Millisecond)
 	}
 
-	err = Save()
+	savePath, err := Save()
 	if err != nil {
 		return err
 	}
+	color.Info.Prompt("save data to [%s]", savePath)
 
 	return nil
 }
@@ -194,13 +198,13 @@ func getBinFilePath(pid int32) (string, string, string, error) {
 	if err != nil {
 		return "", "", "", fmt.Errorf("get exec file path error! pid(%d)\n %w", pid, err)
 	}
-	libstdcppPath, err := GetDynamicDependencyPath(execFilePath, "libstdc\\+\\+")
-	if err != nil {
-		return "", "", "", fmt.Errorf("get libstdc++ path error! exec(%s)\n %w", execFilePath, err)
-	}
 	libcPath, err := GetDynamicDependencyPath(execFilePath, "libc")
 	if err != nil {
 		return "", "", "", fmt.Errorf("get libc path error! exec(%s)\n %w", execFilePath, err)
+	}
+	libstdcppPath, err := GetDynamicDependencyPath(execFilePath, "libstdc\\+\\+")
+	if err != nil {
+		PrintDebugInfo("get libstdc++ path faild! exec(%s)\n %w", execFilePath, err)
 	}
 	return execFilePath, libstdcppPath, libcPath, nil
 }

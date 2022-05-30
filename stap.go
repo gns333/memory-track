@@ -40,9 +40,11 @@ func isOperationEndLine(line string) bool {
 }
 
 func buildMallocProbeCmdStr(pid int32, execPath string, libCPath string, libStdCppPath string) string {
-	mallocCmdStr := "stap -v " +
-		"-d " + libCPath +
-		" -d " + libStdCppPath +
+	mallocCmdStr := "stap -v"
+	if len(libStdCppPath) > 0 {
+		mallocCmdStr += " -d " + libStdCppPath
+	}
+	mallocCmdStr += " -d " + libCPath +
 		" -d " + execPath +
 		" -x " + strconv.Itoa(int(pid)) +
 		" -e " +
@@ -67,9 +69,11 @@ func buildMallocProbeCmdStr(pid int32, execPath string, libCPath string, libStdC
 }
 
 func buildFreeProbeCmdStr(pid int32, execPath string, libCPath string, libStdCppPath string) string {
-	freeCmdStr := "stap -v " +
-		"-d " + libCPath +
-		" -d " + libStdCppPath +
+	freeCmdStr := "stap -v"
+	if len(libStdCppPath) > 0 {
+		freeCmdStr += " -d " + libStdCppPath
+	}
+	freeCmdStr += " -d " + libCPath +
 		" -d " + execPath +
 		" -x " + strconv.Itoa(int(pid)) +
 		" -e " +

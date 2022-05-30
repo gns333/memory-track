@@ -5,6 +5,7 @@ import (
 	"github.com/jroimartin/gocui"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -203,9 +204,9 @@ func drawMenuView(g *gocui.Gui) {
 	menuV, _ := g.View(Menu)
 	menuV.Clear()
 	for i := 0; i < len(MenuDescription); i++ {
-		fmt.Fprintln(menuV, MenuDescription[i])
+		_, _ = fmt.Fprintln(menuV, MenuDescription[i])
 	}
-	menuV.SetCursor(0, menuSelectIndex)
+	_ = menuV.SetCursor(0, menuSelectIndex)
 }
 
 func drawMainView(g *gocui.Gui) {
@@ -213,22 +214,26 @@ func drawMainView(g *gocui.Gui) {
 	mainV.Clear()
 	if menuSelectIndex == MallocTopByte {
 		for _, elem := range mallocTopByteSlice {
-			str := expandStyleString(elem.Stack[0], MainFunctionWidth, strconv.FormatInt(elem.Byte, 10))
+			translateStack, _ := translateStackString(elem.Stack[0])
+			str := expandStyleString(translateStack, MainFunctionWidth, strconv.FormatInt(elem.Byte, 10))
 			_, _ = fmt.Fprintf(mainV, "%s\n", str)
 		}
 	} else if menuSelectIndex == MallocTopCount {
 		for _, elem := range mallocTopCountSlice {
-			str := expandStyleString(elem.Stack[0], MainFunctionWidth, strconv.FormatInt(int64(elem.Count), 10))
+			translateStack, _ := translateStackString(elem.Stack[0])
+			str := expandStyleString(translateStack, MainFunctionWidth, strconv.FormatInt(int64(elem.Count), 10))
 			_, _ = fmt.Fprintf(mainV, "%s\n", str)
 		}
 	} else if menuSelectIndex == MallocTopByteAfterFree {
 		for _, elem := range mallocTopByteAfterFreeSlice {
-			str := expandStyleString(elem.Stack[0], MainFunctionWidth, strconv.FormatInt(elem.Byte, 10))
+			translateStack, _ := translateStackString(elem.Stack[0])
+			str := expandStyleString(translateStack, MainFunctionWidth, strconv.FormatInt(elem.Byte, 10))
 			_, _ = fmt.Fprintf(mainV, "%s\n", str)
 		}
 	} else if menuSelectIndex == MallocTopCountAfterFree {
 		for _, elem := range mallocTopCountAfterFreeSlice {
-			str := expandStyleString(elem.Stack[0], MainFunctionWidth, strconv.FormatInt(int64(elem.Count), 10))
+			translateStack, _ := translateStackString(elem.Stack[0])
+			str := expandStyleString(translateStack, MainFunctionWidth, strconv.FormatInt(int64(elem.Count), 10))
 			_, _ = fmt.Fprintf(mainV, "%s\n", str)
 		}
 	}
@@ -254,7 +259,8 @@ func drawDetailView(g *gocui.Gui) {
 	mainSlice := getMainViewSlice()
 	if mainSlice != nil {
 		for _, elem := range mainSlice[mainSelectIndex].Stack {
-			_, _ = fmt.Fprintf(detailV, "%s\n", elem)
+			translateStack, _ := translateStackString(elem)
+			_, _ = fmt.Fprintf(detailV, "%s\n", translateStack)
 		}
 	}
 }
@@ -325,4 +331,23 @@ func expandStyleString(s1 string, s1width int, s2 string) string {
 	}
 	ret += s2
 	return ret
+}
+
+func translateStackString(rawStack string) (string, error) {
+	index1 := strings.Index(rawStack, "+")
+	index2 := strings.Index(rawStack, " ")
+	if index1 <= 0 || index2 <= 0 || index1 >= index2 {
+		return rawStack, fmt.Errorf("translate stack split args error: %s", rawStack)
+	}
+	funcName := rawStack[:index1]
+	fileLine := rawStack[index1+1 : index2]
+	moduleName := rawStack[index2+1:]
+
+	cmd := fmt.Sprintf("c++filt %s", funcName)
+	filtName, err := RunShellCommand(cmd)
+	if err != nil {
+		return rawStack, fmt.Errorf("translate stack run shell err: %v", err)
+	}
+	filtName = strings.TrimSuffix(filtName, "\n")
+	return fmt.Sprintf("%s+%s %s", filtName, fileLine, moduleName), nil
 }

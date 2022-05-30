@@ -13,15 +13,19 @@ type storageData struct {
 	MOMap map[uintptr]*MallocOp
 }
 
-func Save() error {
+func Save() (string, error) {
 	saveFilePath := RecordOutPath
 	if len(saveFilePath) == 0 {
-		saveFilePath = fmt.Sprintf("%d-%s.track", RecordPid, time.Now().Format("20060102150405"))
+		saveFilePath = fmt.Sprintf("%s-%d.track", time.Now().Format("20060102150405"), RecordPid)
+	}
+
+	if len(mallocStatMap) == 0 && len(freeStatMap) == 0 && len(remainMallocOpMap) == 0 {
+		return "", fmt.Errorf("no data to save! (maybe time is too short)")
 	}
 
 	saveFile, err := os.OpenFile(saveFilePath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		return fmt.Errorf("open file error: %v", err)
+		return "", fmt.Errorf("open file error: %v", err)
 	}
 	defer saveFile.Close()
 
@@ -33,10 +37,10 @@ func Save() error {
 	gobEncoder := gob.NewEncoder(saveFile)
 	err = gobEncoder.Encode(data)
 	if err != nil {
-		return fmt.Errorf("gob encode error: %v", err)
+		return "", fmt.Errorf("gob encode error: %v", err)
 	}
 
-	return nil
+	return saveFilePath, nil
 }
 
 func Load(filename string) error {
