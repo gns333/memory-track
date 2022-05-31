@@ -13,7 +13,7 @@ const (
 	Main   = "MainView"
 	Detail = "DetailView"
 
-	MenuWidth         = 32
+	MenuWidth         = 30
 	MainWidth         = 60
 	MainFunctionWidth = MainWidth - 15
 )
@@ -41,7 +41,19 @@ var mallocTopCountAfterFreeSlice []MallocStat
 
 var cppfiltCacheMap = make(map[string]string)
 
+var mainViewWindowMin int
+var mainViewWindowMax int
+
 func ShowReportUI() error {
+
+	for index := 0; index < 100; index++ {
+		mallocStatMap[uint32(index)] = &MallocStat{
+			Count: int32(index),
+			Byte:  int64(index),
+			Stack: []string{"111", "222"},
+		}
+	}
+
 	prepareData()
 
 	g, err := gocui.NewGui(gocui.OutputNormal)
@@ -134,7 +146,7 @@ func initViews(g *gocui.Gui) error {
 	}
 	mainView.Title = "Main Window"
 	mainView.Highlight = true
-	mainView.Autoscroll = true
+	mainView.Autoscroll = false
 	mainView.Wrap = true
 	mainView.FgColor = gocui.ColorCyan
 	mainView.SelBgColor = gocui.ColorBlue
@@ -145,7 +157,7 @@ func initViews(g *gocui.Gui) error {
 		return err
 	}
 	detailView.Title = "Detail Window"
-	detailView.Autoscroll = true
+	detailView.Autoscroll = false
 	detailView.Wrap = true
 	detailView.FgColor = gocui.ColorCyan
 	detailView.SelBgColor = gocui.ColorBlue
@@ -214,32 +226,76 @@ func drawMenuView(g *gocui.Gui) {
 func drawMainView(g *gocui.Gui) {
 	mainV, _ := g.View(Main)
 	mainV.Clear()
+
+	_, _ = fmt.Fprintf(mainV, "%s\n", getMainViewHeader())
+
+	updateMainViewWindowSize(g)
 	if menuSelectIndex == MallocTopByte {
-		for _, elem := range mallocTopByteSlice {
+		for index := mainViewWindowMin; index <= mainViewWindowMax; index++ {
+			if index < 0 || index >= len(mallocTopByteSlice) {
+				continue
+			}
+			elem := mallocTopByteSlice[index]
 			translateStack, _ := translateStackString(elem.Stack[0])
 			str := expandStyleString(translateStack, MainFunctionWidth, strconv.FormatInt(elem.Byte, 10))
-			_, _ = fmt.Fprintf(mainV, "%s\n", str)
+			_, _ = fmt.Fprintf(mainV, "[%d] %s\n", index, str)
 		}
 	} else if menuSelectIndex == MallocTopCount {
-		for _, elem := range mallocTopCountSlice {
+		for index := mainViewWindowMin; index <= mainViewWindowMax; index++ {
+			if index < 0 || index >= len(mallocTopCountSlice) {
+				continue
+			}
+			elem := mallocTopCountSlice[index]
 			translateStack, _ := translateStackString(elem.Stack[0])
 			str := expandStyleString(translateStack, MainFunctionWidth, strconv.FormatInt(int64(elem.Count), 10))
-			_, _ = fmt.Fprintf(mainV, "%s\n", str)
+			_, _ = fmt.Fprintf(mainV, "[%d] %s\n", index, str)
 		}
 	} else if menuSelectIndex == MallocTopByteAfterFree {
-		for _, elem := range mallocTopByteAfterFreeSlice {
+		for index := mainViewWindowMin; index <= mainViewWindowMax; index++ {
+			if index < 0 || index >= len(mallocTopByteAfterFreeSlice) {
+				continue
+			}
+			elem := mallocTopByteAfterFreeSlice[index]
 			translateStack, _ := translateStackString(elem.Stack[0])
 			str := expandStyleString(translateStack, MainFunctionWidth, strconv.FormatInt(elem.Byte, 10))
-			_, _ = fmt.Fprintf(mainV, "%s\n", str)
+			_, _ = fmt.Fprintf(mainV, "[%d] %s\n", index, str)
 		}
 	} else if menuSelectIndex == MallocTopCountAfterFree {
-		for _, elem := range mallocTopCountAfterFreeSlice {
+		for index := mainViewWindowMin; index <= mainViewWindowMax; index++ {
+			if index < 0 || index >= len(mallocTopCountAfterFreeSlice) {
+				continue
+			}
+			elem := mallocTopCountAfterFreeSlice[index]
 			translateStack, _ := translateStackString(elem.Stack[0])
 			str := expandStyleString(translateStack, MainFunctionWidth, strconv.FormatInt(int64(elem.Count), 10))
-			_, _ = fmt.Fprintf(mainV, "%s\n", str)
+			_, _ = fmt.Fprintf(mainV, "[%d] %s\n", index, str)
 		}
 	}
-	_ = mainV.SetCursor(0, mainSelectIndex)
+	_ = mainV.SetCursor(0, mainSelectIndex-mainViewWindowMin+1)
+}
+
+func updateMainViewWindowSize(g *gocui.Gui) {
+	_, maxY := g.Size()
+	windowLength := maxY - 4
+	if mainViewWindowMax == 0 {
+		mainViewWindowMax = windowLength
+	}
+	if mainSelectIndex > mainViewWindowMax {
+		mainViewWindowMax = mainSelectIndex
+		mainViewWindowMin = mainViewWindowMax - windowLength
+	} else if mainSelectIndex < mainViewWindowMin {
+		mainViewWindowMin = mainSelectIndex
+		mainViewWindowMax = mainViewWindowMin + windowLength
+	}
+}
+
+func getMainViewHeader() string {
+	if menuSelectIndex == MallocTopByte || menuSelectIndex == MallocTopByteAfterFree {
+		return expandStyleString("Function", MainFunctionWidth+4, "Byte")
+	} else if menuSelectIndex == MallocTopCount || menuSelectIndex == MallocTopCountAfterFree {
+		return expandStyleString("Function", MainFunctionWidth+4, "Count")
+	}
+	return ""
 }
 
 func getMainViewSlice() []MallocStat {
@@ -260,9 +316,9 @@ func drawDetailView(g *gocui.Gui) {
 	detailV.Clear()
 	mainSlice := getMainViewSlice()
 	if mainSlice != nil {
-		for _, elem := range mainSlice[mainSelectIndex].Stack {
+		for index, elem := range mainSlice[mainSelectIndex].Stack {
 			translateStack, _ := translateStackString(elem)
-			_, _ = fmt.Fprintf(detailV, "%s\n", translateStack)
+			_, _ = fmt.Fprintf(detailV, "[%d] %s\n", index, translateStack)
 		}
 	}
 }
@@ -345,13 +401,13 @@ func translateStackString(rawStack string) (string, error) {
 	funcName := strings.TrimSpace(rawStack[index1+3 : index2])
 	moduleName := strings.TrimSpace(rawStack[index2:])
 
-	simplifyModuleName, _ := SimplifyModuleName(moduleName)
-	filtFuncName, _ := CPPFiltFuncName(funcName)
+	simplifyModuleName, _ := simplifyModuleName(moduleName)
+	filtFuncName, _ := cppFiltFuncName(funcName)
 
 	return fmt.Sprintf("%s [%s] [%s]", filtFuncName, fileLine, simplifyModuleName), nil
 }
 
-func SimplifyModuleName(rawName string) (string, error) {
+func simplifyModuleName(rawName string) (string, error) {
 	index1 := strings.LastIndex(rawName, "/")
 	index2 := strings.LastIndex(rawName, "]")
 	if index1 <= 0 || index2 <= 0 || index1 >= index2 {
@@ -360,7 +416,7 @@ func SimplifyModuleName(rawName string) (string, error) {
 	return rawName[index1+1 : index2], nil
 }
 
-func CPPFiltFuncName(rawName string) (string, error) {
+func cppFiltFuncName(rawName string) (string, error) {
 	index := strings.Index(rawName, "+")
 	if index <= 0 {
 		return rawName, fmt.Errorf("cppfilt split args error: %s", rawName)
