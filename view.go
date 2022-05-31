@@ -45,15 +45,6 @@ var mainViewWindowMin int
 var mainViewWindowMax int
 
 func ShowReportUI() error {
-
-	for index := 0; index < 100; index++ {
-		mallocStatMap[uint32(index)] = &MallocStat{
-			Count: int32(index),
-			Byte:  int64(index),
-			Stack: []string{"111", "222"},
-		}
-	}
-
 	prepareData()
 
 	g, err := gocui.NewGui(gocui.OutputNormal)
