@@ -63,6 +63,9 @@ func RecordProcessMem(pid int32) error {
 
 	color.Info.Prompt("start track memory...")
 	color.Info.Prompt("press [ctrl + C] stop")
+
+	setupStopTimer()
+	
 Loop:
 	for {
 		select {
@@ -90,6 +93,25 @@ Loop:
 
 func StopRecordMem() {
 	stopRecord <- true
+}
+
+func setupStopTimer() {
+	if RecordTime > 0 {
+		go func() {
+			timeTicker := time.NewTicker(time.Second)
+			leftSecond := RecordTime
+			for {
+				select {
+				case <-timeTicker.C:
+					leftSecond--
+					color.Info.Prompt("finish after %d second...", leftSecond)
+					if leftSecond <= 0 {
+						StopRecordMem()
+					}
+				}
+			}
+		}()
+	}
 }
 
 func addMallocOp(m *MallocOp) {
