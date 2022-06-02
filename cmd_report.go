@@ -7,7 +7,7 @@ import (
 
 var reportCmd = &cobra.Command{
 	Use:   "report",
-	Short: "Report memory stat",
+	Short: "Report memory statistics by malloc usage",
 	Run:   runReportCmd,
 	//Args:  cobra.ExactValidArgs(2),
 }

@@ -7,7 +7,7 @@ import (
 
 var recordCmd = &cobra.Command{
 	Use:   "record",
-	Short: "Record memory stat",
+	Short: "Record target process malloc/free call",
 	Run:   runRecordCmd,
 }
 

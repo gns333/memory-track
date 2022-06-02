@@ -65,7 +65,7 @@ func RecordProcessMem(pid int32) error {
 	color.Info.Prompt("press [ctrl + C] stop")
 
 	setupStopTimer()
-	
+
 Loop:
 	for {
 		select {

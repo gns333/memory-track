@@ -7,8 +7,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use: "memory-track",
-	Short: "A memory track tool",
+	Use:     "memory-track",
+	Short:   "A memory track tool",
+	Example: "memory-track record -p pid [-t sec] [-o path]\nmemory-track report -i path",
 }
 
 var Verbose bool
