@@ -28,12 +28,8 @@ const (
 	MallocTopCountAfterFree = 3
 )
 
-var MenuDescription = []string{
-	"Top Byte (Malloc)",
-	"Top Count (Malloc)",
-	"Top Byte (MallocAfterFree)",
-	"Top Count (MallocAfterFree)",
-}
+var MenuDescriptionSlice []string
+
 var mallocTopByteSlice []MallocStat
 var mallocTopCountSlice []MallocStat
 var mallocTopByteAfterFreeSlice []MallocStat
@@ -84,8 +80,12 @@ func ShowReportUI() error {
 
 func prepareData() {
 	for _, v := range mallocStatMap {
-		mallocTopByteSlice = append(mallocTopByteSlice, *v)
-		mallocTopCountSlice = append(mallocTopCountSlice, *v)
+		if v.Byte >= ReportMinByte {
+			mallocTopByteSlice = append(mallocTopByteSlice, *v)
+		}
+		if v.Count >= ReportMinCount {
+			mallocTopCountSlice = append(mallocTopCountSlice, *v)
+		}
 	}
 	sort.SliceStable(mallocTopByteSlice, func(i, j int) bool {
 		return mallocTopByteSlice[i].Byte > mallocTopByteSlice[j].Byte
@@ -108,8 +108,12 @@ func prepareData() {
 		}
 	}
 	for _, v := range remainMallocStatMap {
-		mallocTopByteAfterFreeSlice = append(mallocTopByteAfterFreeSlice, *v)
-		mallocTopCountAfterFreeSlice = append(mallocTopCountAfterFreeSlice, *v)
+		if v.Byte >= ReportMinByte {
+			mallocTopByteAfterFreeSlice = append(mallocTopByteAfterFreeSlice, *v)
+		}
+		if v.Count >= ReportMinCount {
+			mallocTopCountAfterFreeSlice = append(mallocTopCountAfterFreeSlice, *v)
+		}
 	}
 	sort.SliceStable(mallocTopByteAfterFreeSlice, func(i, j int) bool {
 		return mallocTopByteAfterFreeSlice[i].Byte > mallocTopByteAfterFreeSlice[j].Byte
@@ -117,6 +121,15 @@ func prepareData() {
 	sort.SliceStable(mallocTopCountAfterFreeSlice, func(i, j int) bool {
 		return mallocTopCountAfterFreeSlice[i].Count > mallocTopCountAfterFreeSlice[j].Count
 	})
+
+	prepareMenu()
+}
+
+func prepareMenu() {
+	MenuDescriptionSlice = append(MenuDescriptionSlice, "Top Byte [malloc]")
+	MenuDescriptionSlice = append(MenuDescriptionSlice, "Top Count [malloc]")
+	MenuDescriptionSlice = append(MenuDescriptionSlice, "Top Byte [malloc after free]")
+	MenuDescriptionSlice = append(MenuDescriptionSlice, "Top Count [malloc after free]")
 }
 
 func initViews(g *gocui.Gui) error {
@@ -208,8 +221,8 @@ func quitReportUI(g *gocui.Gui, v *gocui.View) error {
 func drawMenuView(g *gocui.Gui) {
 	menuV, _ := g.View(Menu)
 	menuV.Clear()
-	for i := 0; i < len(MenuDescription); i++ {
-		_, _ = fmt.Fprintln(menuV, MenuDescription[i])
+	for _, v := range MenuDescriptionSlice {
+		_, _ = fmt.Fprintln(menuV, v)
 	}
 	_ = menuV.SetCursor(0, menuSelectIndex)
 }
@@ -335,7 +348,7 @@ func keyArrowUp(g *gocui.Gui, v *gocui.View) error {
 
 func keyArrowDown(g *gocui.Gui, v *gocui.View) error {
 	if v.Name() == Menu {
-		if menuSelectIndex < len(MenuDescription)-1 {
+		if menuSelectIndex < len(MenuDescriptionSlice)-1 {
 			menuSelectIndex++
 			mainSelectIndex = 0
 			drawMenuView(g)
